@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skyfire Smart Dashboard</title>
+    <style>
+        :root {
+            --bg-grad: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            --card-bg: rgba(30, 41, 59, 0.6);
+            --accent: #ff9f43;
+            --text: #f1f5f9;
+            --glass: rgba(255, 255, 255, 0.1);
+            --modal-bg: #1e293b;
+        }
+
+        [data-theme="light"] {
+            --bg-grad: linear-gradient(135deg, #e0f2fe 0%, #bfdbfe 100%);
+            --card-bg: rgba(255, 255, 255, 0.4);
+            --accent: #ff7f50; 
+            --text: #1e293b;
+            --modal-bg: #ffffff;
+            --glass: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: var(--bg-grad); background-size: cover; background-position: center; background-attachment: fixed;
+            color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; 
+            padding: 20px 20px 280px 20px; transition: background 0.4s, color 0.4s;
+        }
+
+        /* Виджеты */
+        #clock-container { text-align: center; margin-top: 20px; }
+        #time { font-size: 80px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+        #date { font-size: 18px; opacity: 0.8; text-transform: capitalize; margin-bottom: 15px; }
+        
+        .info-bar { display: flex; gap: 20px; background: var(--card-bg); backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 15px; border: 1px solid var(--glass); justify-content: center; }
+        .info-bar span { color: var(--accent); font-weight: bold; }
+
+        .search-container { margin: 30px 0; width: 100%; max-width: 600px; }
+        .search-bar { display: flex; background: var(--card-bg); border-radius: 15px; padding: 10px; border: 1px solid var(--glass); backdrop-filter: blur(15px); }
+        .search-input { flex: 1; background: transparent; border: none; color: var(--text); font-size: 18px; outline: none; padding-left: 10px; }
+
+        /* Сетка закладок */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px; width: 100%; max-width: 900px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 20px; text-decoration: none; color: var(--text); text-align: center; border: 1px solid var(--glass); transition: 0.3s; position: relative; backdrop-filter: blur(12px); display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent); background: rgba(255,255,255,0.1); }
+        .card-icon { font-size: 32px; margin-bottom: 10px; }
+        .del-btn { position: absolute; top: 8px; right: 8px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; display: none; font-size: 12px; }
+        .card:hover .del-btn { display: block; }
+
+        /* Новости */
+        .news-section { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 1000px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+        .news-card { background: var(--card-bg); backdrop-filter: blur(15px); padding: 15px; border-radius: 15px; border: 1px solid var(--glass); text-decoration: none; color: var(--text); font-size: 13px; transition: 0.2s; border-left: 4px solid var(--accent); overflow: hidden; text-overflow: ellipsis; }
+
+        /* Настройки */
+        .settings-btn { position: absolute; top: 20px; right: 20px; font-size: 24px; cursor: pointer; background: none; border: none; color: var(--text); opacity: 0.7; z-index: 100; transition: 0.3s; }
+        .settings-btn:hover { transform: rotate(90deg); opacity: 1; }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal { background: var(--modal-bg); padding: 25px; border-radius: 25px; width: 400px; max-height: 85vh; overflow-y: auto; border: 1px solid var(--glass); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        
+        .modal h3 { margin-top: 0; color: var(--accent); border-bottom: 1px solid var(--glass); padding-bottom: 10px; }
+        .setting-item { margin-bottom: 15px; }
+        .setting-item label { display: block; font-size: 12px; opacity: 0.7; margin-bottom: 5px; font-weight: bold; }
+        
+        input, select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--glass); background: rgba(0,0,0,0.1); color: var(--text); box-sizing: border-box; font-size: 14px; }
+
+        .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: rgba(0,0,0,0.15); padding: 12px; border-radius: 12px; }
+        .toggle-label { 
+            font-size: 13px; display: flex; align-items: center; justify-content: space-between; 
+            cursor: pointer; padding: 6px 10px; background: rgba(255,255,255,0.05); border-radius: 8px; 
+        }
+        .toggle-label:hover { background: rgba(255,255,255,0.1); }
+        .toggle-label input { width: auto; margin: 0; cursor: pointer; }
+
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-ghost { background: transparent; border: 1px solid var(--glass); color: var(--text); }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <button class="settings-btn" onclick="openModal('settingsModal')">⚙️</button>
+
+    <div id="clock-container">
+        <div id="time">00:00</div>
+        <div id="date">...</div>
+        <div class="info-bar" id="infoBar">
+            <div id="weather">🌤️ Загрузка...</div>
+            <div id="rates">💵 USD --</div>
+        </div>
+    </div>
+
+    <div class="search-container">
+        <form id="searchForm" action="https://duckduckgo.com/" method="GET" class="search-bar">
+            <input type="text" name="q" id="searchInput" class="search-input" placeholder="Поиск...">
+        </form>
+    </div>
+
+    <div class="grid" id="linkGrid">
+        <div class="card" onclick="openModal('addModal')" style="border-style: dashed; order: 100;">
+            <div class="card-icon">➕</div>
+            <span>Добавить</span>
+        </div>
+    </div>
+
+    <div class="news-section" id="newsGrid"></div>
+
+    <div id="settingsModal" class="modal-overlay" onclick="closeModal(event, 'settingsModal')">
+        <div class="modal" id="settingsContent">
+            <h3>Параметры Skyfire</h3>
+            <div class="setting-item">
+                <label>Отображать элементы:</label>
+                <div class="toggle-grid">
+                    <label class="toggle-label"><span>Время</span> <input type="checkbox" id="checkTime"></label>
+                    <label class="toggle-label"><span>Погода</span> <input type="checkbox" id="checkWeather"></label>
+                    <label class="toggle-label"><span>Валюты</span> <input type="checkbox" id="checkRates"></label>
+                    <label class="toggle-label"><span>Новости</span> <input type="checkbox" id="checkNews"></label>
+                </div>
+            </div>
+            <div class="setting-item">
+                <label>Фоновое изображение (URL):</label>
+                <input type="text" id="bgInput" placeholder="https://example.com/wallpaper.jpg">
+            </div>
+            <div class="setting-item">
+                <label>Ваш город:</label>
+                <input type="text" id="cityInput" placeholder="Москва">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="setting-item" style="flex: 1;">
+                    <label>Валюта:</label>
+                    <select id="currencySelect">
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+                <div class="setting-item" style="flex: 1;">
+                    <label>Регион:</label>
+                    <select id="regionSelect">
+                        <option value="RUB">РФ (₽)</option>
+                        <option value="BYN">РБ (Br)</option>
+                        <option value="UAH">УА (₴)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="setting-item">
+                <label>Тема и Поиск:</label>
+                <div style="display: flex; gap: 10px;">
+                    <select id="themeSelect">
+                        <option value="dark">Тёмная</option>
+                        <option value="light">Светлая</option>
+                    </select>
+                    <select id="engineSelect">
+                        <option value="https://duckduckgo.com/">DuckDuckGo</option>
+                        <option value="https://yandex.ru/search/">Яндекс</option>
+                        <option value="https://www.google.com/search">Google</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="handleSaveSettings()">Применить</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('settingsModal').style.display='none'">Отмена</button>
+        </div>
+
+        <div class="modal" id="googleWarning" style="display:none; text-align:center;">
+            <h3 style="color:#ff4757;">Внимание!</h3>
+            <p>Skyfire Software не сотрудничает с Google.</p>
+            <button class="btn btn-primary" style="background:#ff4757;" onclick="confirmGoogle(true)">Продолжить</button>
+            <button class="btn btn-ghost" onclick="confirmGoogle(false)">Назад</button>
+        </div>
+    </div>
+
+    <div id="addModal" class="modal-overlay" onclick="closeModal(event, 'addModal')">
+        <div class="modal">
+            <h3>Добавить закладку</h3>
+            <div class="setting-item"><label>Название:</label><input type="text" id="newTitle" placeholder="YouTube"></div>
+            <div class="setting-item"><label>URL:</label><input type="text" id="newUrl" placeholder="https://youtube.com"></div>
+            <button class="btn btn-primary" onclick="addNewLink()">Сохранить</button>
+        </div>
+    </div>
+
+    <script>
+        // СПИСОК ОФИЦИАЛЬНЫХ ЗАКРЕПОВ (с добавленным Telegram)
+        const skyfireLinks = [
+            { title: 'Skyfire Site', url: 'https://b1tneym42.github.io/Skyfire-Browser/', fixed: true, icon: '🌐' },
+            { title: 'Telegram', url: 'https://t.me/SkyfireBrowser', fixed: true, icon: '✈️' },
+            { title: 'X / Skyfire', url: 'https://x.com/Skyfire_io', fixed: true, icon: '𝕏' },
+            { title: 'Discord', url: 'https://discord.gg/9K8pqkUyK3', fixed: true, icon: '💬' },
+            { title: 'GitHub', url: 'https://github.com/b1tneym42/Skyfire-Browser', fixed: true, icon: '🐙' }
+        ];
+
+        let userLinks = JSON.parse(localStorage.getItem('userLinks')) || [];
+        let config = JSON.parse(localStorage.getItem('skyfireConfig')) || {
+            theme: 'dark', bg: '', city: 'Москва', currency: 'USD', region: 'RUB',
+            engine: 'https://duckduckgo.com/',
+            show: { time: true, weather: true, rates: true, news: true }
+        };
+
+        function init() {
+            applyConfig();
+            updateTime();
+            setInterval(updateTime, 1000);
+            renderLinks();
+            fetchWeather();
+            fetchRates();
+            fetchNews();
+        }
+
+        function applyConfig() {
+            document.body.setAttribute('data-theme', config.theme);
+            document.getElementById('searchForm').action = config.engine;
+            document.getElementById('searchInput').placeholder = `Поиск в ${config.engine.includes('google') ? 'Google' : config.engine.includes('yandex') ? 'Яндексе' : 'DuckDuckGo'}...`;
+            
+            if (config.bg) document.body.style.backgroundImage = `url('${config.bg}')`;
+            else document.body.style.backgroundImage = '';
+
+            document.getElementById('clock-container').style.display = config.show.time ? 'block' : 'none';
+            document.getElementById('infoBar').style.display = (config.show.weather || config.show.rates) ? 'flex' : 'none';
+            document.getElementById('weather').style.display = config.show.weather ? 'block' : 'none';
+            document.getElementById('rates').style.display = config.show.rates ? 'block' : 'none';
+            document.getElementById('newsGrid').style.display = config.show.news ? 'grid' : 'none';
+
+            // Синхронизация полей в настройках
+            document.getElementById('bgInput').value = config.bg || '';
+            document.getElementById('cityInput').value = config.city;
+            document.getElementById('themeSelect').value = config.theme;
+            document.getElementById('currencySelect').value = config.currency;
+            document.getElementById('regionSelect').value = config.region;
+            document.getElementById('engineSelect').value = config.engine;
+            document.getElementById('checkTime').checked = config.show.time;
+            document.getElementById('checkWeather').checked = config.show.weather;
+            document.getElementById('checkRates').checked = config.show.rates;
+            document.getElementById('checkNews').checked = config.show.news;
+        }
+
+        function handleSaveSettings() {
+            const newEngine = document.getElementById('engineSelect').value;
+            if (newEngine.includes('google') && config.engine !== newEngine) {
+                document.getElementById('settingsContent').style.display = 'none';
+                document.getElementById('googleWarning').style.display = 'block';
+            } else {
+                saveEverything();
+            }
+        }
+
+        function confirmGoogle(isYes) {
+            if (!isYes) document.getElementById('engineSelect').value = 'https://duckduckgo.com/';
+            saveEverything();
+            document.getElementById('googleWarning').style.display = 'none';
+            document.getElementById('settingsContent').style.display = 'block';
+        }
+
+        function saveEverything() {
+            config = {
+                theme: document.getElementById('themeSelect').value,
+                bg: document.getElementById('bgInput').value,
+                city: document.getElementById('cityInput').value,
+                currency: document.getElementById('currencySelect').value,
+                region: document.getElementById('regionSelect').value,
+                engine: document.getElementById('engineSelect').value,
+                show: {
+                    time: document.getElementById('checkTime').checked,
+                    weather: document.getElementById('checkWeather').checked,
+                    rates: document.getElementById('checkRates').checked,
+                    news: document.getElementById('checkNews').checked
+                }
+            };
+            localStorage.setItem('skyfireConfig', JSON.stringify(config));
+            applyConfig();
+            fetchWeather();
+            fetchRates();
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function fetchWeather() {
+            if (!config.show.weather) return;
+            try {
+                const res = await fetch(`https://wttr.in/${config.city}?format=j1&lang=ru`);
+                const data = await res.json();
+                const temp = data.current_condition[0].temp_C;
+                document.getElementById('weather').innerHTML = `🌤️ ${config.city}: <span>${temp}°C</span>`;
+            } catch (e) { document.getElementById('weather').innerText = '🌤️ Погода н/д'; }
+        }
+
+        async function fetchRates() {
+            if (!config.show.rates) return;
+            const symbols = { RUB: '₽', BYN: 'Br', UAH: '₴' };
+            try {
+                const res = await fetch(`https://open.er-api.com/v6/latest/USD`);
+                const data = await res.json();
+                const usdBase = data.rates[config.region];
+                let finalRate = config.currency === 'USD' ? usdBase : (usdBase / data.rates.EUR);
+                document.getElementById('rates').innerHTML = `💵 ${config.currency}: <span>${finalRate.toFixed(2)} ${symbols[config.region]}</span>`;
+            } catch (e) { document.getElementById('rates').innerText = '💵 Курс н/д'; }
+        }
+
+        async function fetchNews() {
+            if (!config.show.news) return;
+            try {
+                const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://news.google.com/rss?hl=ru&gl=RU&ceid=RU:ru');
+                const data = await res.json();
+                document.getElementById('newsGrid').innerHTML = data.items.slice(0, 4).map(item => `
+                    <a href="${item.link}" target="_blank" class="news-card">${item.title}</a>
+                `).join('');
+            } catch (e) { document.getElementById('newsGrid').innerHTML = ''; }
+        }
+
+        function renderLinks() {
+            const container = document.getElementById('linkGrid');
+            // Удаляем старые карточки (кроме кнопки Плюс)
+            document.querySelectorAll('.card:not([onclick*="addModal"])').forEach(e => e.remove());
+            
+            // 1. Рендерим системные ссылки
+            skyfireLinks.forEach(link => {
+                createCard(container, link, true);
+            });
+
+            // 2. Рендерим пользовательские ссылки
+            userLinks.forEach((link, index) => {
+                createCard(container, link, false, index);
+            });
+        }
+
+        function createCard(container, link, isFixed, index = null) {
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.innerHTML = `
+                ${!isFixed ? `<button class="del-btn" onclick="deleteLink(${index})">×</button>` : ''}
+                <div class="card-icon">${link.icon || '🔗'}</div>
+                <span style="font-size:12px;">${link.title}</span>
+            `;
+            div.onclick = (e) => { 
+                if(e.target.className !== 'del-btn') window.open(link.url, '_blank'); 
+            };
+            container.appendChild(div);
+        }
+
+        function addNewLink() {
+            const title = document.getElementById('newTitle').value;
+            let url = document.getElementById('newUrl').value;
+            if (title && url) {
+                if (!url.startsWith('http')) url = 'https://' + url;
+                userLinks.push({ title, url, fixed: false });
+                localStorage.setItem('userLinks', JSON.stringify(userLinks));
+                renderLinks();
+                document.getElementById('addModal').style.display = 'none';
+                document.getElementById('newTitle').value = '';
+                document.getElementById('newUrl').value = '';
+            }
+        }
+
+        function deleteLink(idx) {
+            userLinks.splice(idx, 1);
+            localStorage.setItem('userLinks', JSON.stringify(userLinks));
+            renderLinks();
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('time').innerText = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('date').innerText = now.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(e, id) { if(e.target.id === id) document.getElementById(id).style.display = 'none'; }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
